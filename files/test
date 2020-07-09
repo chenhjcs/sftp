@@ -1,0 +1,45 @@
+#!/bin/bash
+OBS_URL=obs.cn-east-2.myhuaweicloud.com
+AK=FKNDHTWP1ADEIN2DVZNO
+SK=04hAHjl8AJDjz3UfCzo7f4kjt71iTTD4GSucGXZ6
+BUCKET_NAME=deri-demo
+MOUNT_PATH=/data
+OBS_PASSWD_PATH=/etc/passwd-obsfs
+
+function mount()
+{
+echo $OBS_URL
+
+# -z 检查变量未定义或为空值
+if [ -z "$OBS_URL" ]; then
+echo "ERROE OBS_URL: "$OBS_URL
+return
+fi
+
+if [ -z "$AK" ]; then
+echo "ERROE AK: "$AK
+return
+fi
+
+if [ -z "$SK" ]; then
+echo "ERROE SK: "$SK
+return
+fi
+
+if [ -z "$BUCKET_NAME" ]; then
+echo "ERROE BUCKET_NAME: "$BUCKET_NAME
+return
+fi
+
+if [ -z "$MOUNT_PATH" ]; then
+echo "ERROE MOUNT_PATH: "$MOUNT_PATH
+return
+fi
+
+if [ -z "$OBS_PASSWD_PATH" ]; then
+echo "ERROE OBS_PASSWD_PATH: "$OBS_PASSWD_PATH
+return
+fi
+}
+
+mount

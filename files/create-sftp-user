@@ -1,4 +1,6 @@
 #!/bin/bash
+
+# 设置了这个选项以后，包含管道命令的语句的返回值，会变成最后一个返回非零的管道命令的返回值。
 set -Eeo pipefail
 
 # shellcheck disable=2154
@@ -11,6 +13,9 @@ reUid='[[:digit:]]*'
 reGid='[[:digit:]]*'
 reDir='[^:]*'
 #reArgs="^($reUser)(:$rePass)(:e)?(:$reUid)?(:$reGid)?(:$reDir)?$"
+
+echo "hello"
+set -e
 
 function log() {
     echo "[$0] $*"
@@ -30,23 +35,33 @@ function validateArg() {
 }
 
 log "Parsing user data: \"$1\""
+
+#使用 : 分割符读取第1个变量，并存放至 args 变量。
 IFS=':' read -ra args <<< "$1"
 
 skipIndex=0
 chpasswdOptions=""
 useraddOptions=(--no-user-group)
 
+# 检查参数是否合法
 user="${args[0]}"; validateArg "username" "$user" "$reUser" || exit 1
 pass="${args[1]}"; validateArg "password" "$pass" "$rePass" || exit 1
 
+# 加密存储密码
 if [ "${args[2]}" == "e" ]; then
     chpasswdOptions="-e"
     skipIndex=1
 fi
 
+# 检查参数是否合法
 uid="${args[$((skipIndex+2))]}"; validateArg "UID" "$uid" "$reUid" || exit 1
 gid="${args[$((skipIndex+3))]}"; validateArg "GID" "$gid" "$reGid" || exit 1
 dir="${args[$((skipIndex+4))]}"; validateArg "dirs" "$dir" "$reDir" || exit 1
+
+# getent 用来察看系统的数据库中的相关记录
+# 支持的数据库：
+# ahosts ahostsv4 ahostsv6 aliases ethers group gshadow hosts netgroup
+# networks passwd protocols rpc services shadow
 
 if getent passwd "$user" > /dev/null; then
     log "WARNING: User \"$user\" already exists. Skipping."
@@ -65,6 +80,8 @@ if [ -n "$gid" ]; then
     useraddOptions+=(--gid "$gid")
 fi
 
+# ${useraddOptions[@]} 数组 useraddOptions 中所有元素
+echo "${useraddOptions[@]}" "$user"
 useradd "${useraddOptions[@]}" "$user"
 mkdir -p "/home/$user"
 chown root:root "/home/$user"
@@ -74,6 +91,7 @@ chmod 755 "/home/$user"
 # to avoid problems on alpine when the user name contains a '.'
 uid="$(id -u "$user")"
 
+# 修改密码
 if [ -n "$pass" ]; then
     echo "$user:$pass" | chpasswd $chpasswdOptions
 else
@@ -89,11 +107,12 @@ if [ -d "/home/$user/.ssh/keys" ]; then
     chmod 600 "/home/$user/.ssh/authorized_keys"
 fi
 
+# 在 /data 目录，为用户创建可读可写目录
 # Make sure dirs exists
 if [ -n "$dir" ]; then
     IFS=',' read -ra dirArgs <<< "$dir"
     for dirPath in "${dirArgs[@]}"; do
-        dirPath="/home/$user/$dirPath"
+        dirPath="/data/$dirPath"
         if [ ! -d "$dirPath" ]; then
             log "Creating directory: $dirPath"
             mkdir -p "$dirPath"

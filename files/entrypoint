@@ -1,6 +1,18 @@
 #!/bin/bash
 set -Eeo pipefail
 
+# 调用一下挂载脚本
+if [ -f "/usr/local/bin/mount_obs" ]; then
+/usr/local/bin/mount_obs
+fi
+
+ROOT_PATH="/data"
+mkdir -p $ROOT_PATH
+
+chown root:root $ROOT_PATH
+chmod 755 $ROOT_PATH
+
+
 # shellcheck disable=2154
 trap 's=$?; echo "$0: Error on line "$LINENO": $BASH_COMMAND"; exit $s' ERR
 
@@ -29,7 +41,7 @@ if [ ! -f "$userConfPath" ] && [ -f "$userConfPathLegacy" ]; then
     ln -s "$userConfPathLegacy" "$userConfPath"
 fi
 
-# Create users only on first run
+# sftp 第一次初始化时执行以下操作
 if [ ! -f "$userConfFinalPath" ]; then
     mkdir -p "$(dirname $userConfFinalPath)"
 
@@ -39,7 +51,7 @@ if [ ! -f "$userConfFinalPath" ]; then
     fi
 
     if $startSshd; then
-        # Append users from arguments to final config
+        # 将 docker 命令参数中的用户信息添加到最终配置文件。
         for user in "$@"; do
             echo "$user" >> "$userConfFinalPath"
         done
@@ -47,6 +59,7 @@ if [ ! -f "$userConfFinalPath" ]; then
 
     if [ -n "$SFTP_USERS" ]; then
         # Append users from environment variable to final config
+        # 将环境变量中用户账号信息
         IFS=" " read -r -a usersFromEnv <<< "$SFTP_USERS"
         for user in "${usersFromEnv[@]}"; do
             echo "$user" >> "$userConfFinalPath"
@@ -56,6 +69,7 @@ if [ ! -f "$userConfFinalPath" ]; then
     # Check that we have users in config
     if [ -f "$userConfFinalPath" ] && [ "$(wc -l < "$userConfFinalPath")" -gt 0 ]; then
         # Import users from final conf file
+        # 从 "$userConfFinalPath" 文件，按行读取 user 信息，逐行创建用户信息和目录
         while IFS= read -r user || [[ -n "$user" ]]; do
             create-sftp-user "$user"
         done < "$userConfFinalPath"
@@ -64,7 +78,7 @@ if [ ! -f "$userConfFinalPath" ]; then
         exit 3
     fi
 
-    # Generate unique ssh keys for this container, if needed
+    # 创建 sftp 所必须的 key
     if [ ! -f /etc/ssh/ssh_host_ed25519_key ]; then
         ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key -N ''
     fi
@@ -73,19 +87,22 @@ if [ ! -f "$userConfFinalPath" ]; then
     fi
 fi
 
-# Source custom scripts, if any
+# 执行 /etc/sftp.d 目录下自定义脚本
 if [ -d /etc/sftp.d ]; then
     for f in /etc/sftp.d/*; do
         if [ -x "$f" ]; then
             log "Running $f ..."
             $f
         else
+            # 脚本没有可执行权限
             log "Could not run $f, because it's missing execute permission (+x)."
         fi
     done
+    # 删除 f 变量
     unset f
 fi
 
+# 若启动命令后面跟随其它命令，则不启动 sshd 服务。
 if $startSshd; then
     log "Executing sshd"
     exec /usr/sbin/sshd -D -e

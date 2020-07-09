@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# 在环境变量中定义以下变量
+# OBS_URL=obs.cn-east-2.myhuaweicloud.com
+# AK=FKNDHTWP1ADEIN2DVZNO
+# SK=04hAHjl8AJDjz3UfCzo7f4kjt71iTTD4GSucGXZ6
+# BUCKET_NAME=deri-demo
+MOUNT_PATH=/data
+OBS_PASSWD_PATH=/etc/passwd-obsfs
+
+
+function mount()
+{
+echo $OBS_URL
+
+# -z 检查变量未定义或为空值
+if [ -z "$OBS_URL" ]; then
+echo "ERROE OBS_URL: "$OBS_URL
+return
+fi
+
+if [ -z "$AK" ]; then
+echo "ERROE AK: "$AK
+return
+fi
+
+if [ -z "$SK" ]; then
+echo "ERROE SK: "$SK
+return
+fi
+
+if [ -z "$BUCKET_NAME" ]; then
+echo "ERROE BUCKET_NAME: "$BUCKET_NAME
+return
+fi
+
+if [ -z "$MOUNT_PATH" ]; then
+echo "ERROE MOUNT_PATH: "$MOUNT_PATH
+return
+fi
+
+if [ -z "$OBS_PASSWD_PATH" ]; then
+echo "ERROE OBS_PASSWD_PATH: "$OBS_PASSWD_PATH
+return
+fi
+
+
+# 创建 obs 账号文件
+if [ ! -f "$OBS_PASSWD_PATH" ]; then
+echo "create obs_passwd path"
+echo $AK:$SK > $OBS_PASSWD_PATH
+chmod 600 $OBS_PASSWD_PATH
+fi
+
+# 文件未挂载进行挂载
+if ! grep -qs "$MOUNT_PATH " /proc/mounts; then
+echo "mount obsfs"
+mkdir -p $MOUNT_PATH
+/root/obsfs_CentOS7.6_amd64/obsfs $BUCKET_NAME $MOUNT_PATH -o url=$OBS_URL -o passwd_file=$OBS_PASSWD_PATH -o use_ino
+fi
+}
+
+
+mount
