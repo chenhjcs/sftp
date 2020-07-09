@@ -5,8 +5,7 @@
 # AK=FKNDHTWP1ADEIN2DVZNO
 # SK=04hAHjl8AJDjz3UfCzo7f4kjt71iTTD4GSucGXZ6
 # BUCKET_NAME=deri-demo
-MOUNT_PATH=/data
-OBS_PASSWD_PATH=/etc/passwd-obsfs
+
 
 
 function mount()
@@ -35,13 +34,13 @@ return
 fi
 
 if [ -z "$MOUNT_PATH" ]; then
+MOUNT_PATH=/data
 echo "ERROE MOUNT_PATH: "$MOUNT_PATH
-return
 fi
 
 if [ -z "$OBS_PASSWD_PATH" ]; then
+OBS_PASSWD_PATH=/etc/passwd-obsfs
 echo "ERROE OBS_PASSWD_PATH: "$OBS_PASSWD_PATH
-return
 fi
 
 
